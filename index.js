@@ -21,7 +21,7 @@ export async function connectToMongoDB() {
     console.dir(err);
   }
 }
-const connectedClient = await connectToMongoDB()
+const connectedClient = await connectToMongoDB()  
 const database= connectedClient.db('hireloopdb')
 const users = database.collection('user')
 const jobs= database.collection('jobs')
@@ -46,7 +46,7 @@ app.post('/jobs',async(req,res)=>{
   const result = await jobs.insertOne(job)
   res.send(result)
 })
-//API for  giving job list 
+//API for  giving job list without login
 app.get('/jobs', async (req, res) => {
   const query = {};
 
@@ -111,10 +111,20 @@ app.put("/jobs/:id", async (req, res) => {
 app.get('/jobs/:id',async(req,res)=>{
   const id = req.params.id
   const result = await jobs.findOne({_id: new ObjectId(id)})
+
+  res.send(result)
+})
+// get single job by Api 
+app.get('/jobs/users/:id',async(req,res)=>{
+  const id = req.params.id
+  // const result={}
+   const result =await jobs.find({userId:id}).toArray()
+
   res.send(result)
 })
 
-//applied job to send in database
+
+//applied job to send in databasess
 app.post('/application',async(req,res)=>{
    const apps = req.body
    const result = await application.insertOne(apps)
@@ -123,9 +133,14 @@ app.post('/application',async(req,res)=>{
 // Show Applied job According to User Id
 app.get('/application',async(req,res)=>{
   const allQueries = {}
+  
   if(req.query.id){
-//allqueries.userId = req.query.id          ( userId will be match with mongodb property)  (id will be match with parameter from user frontend)
+    //( userId will be match with mongodb property)  (id will be match with parameter from user frontend)
     allQueries.userId = req.query.id   
+  }
+  // add the job whose by the userId
+  if(req.query.userId){
+    allQueries.userId=req.query.userId
   }
   const cursor = application.find(allQueries)
    const result = await cursor.toArray();
@@ -161,6 +176,11 @@ app.post('/payments/checkout-verify',async(req,res)=>{
  //3. insert sessionId into the Payment collection
  // 4.update the user information as premium user
     if (status === 'complete' && payment_status==='paid') {
+      const sessionQuery = {sessionId}
+      const existingPayment = await payments.findOne(sessionQuery);
+      if(existingPayment){
+        return res.send({success:false, message:"Payment Already Verified"})
+      }
         const payInfo = {
             sessionId,
             status,
@@ -185,7 +205,14 @@ app.post('/payments/checkout-verify',async(req,res)=>{
     res.send({success:false, message:'Payment verification failed'})
 })
 
+// get users permium by Id 
+app.get('/users/:id/premium',async(req,res)=>{
+    const id = req.params.id;
+    const query = {_id: new ObjectId(id)}
+    const result = await users.findOne(query,{projection:{premium:1}})
+    res.send(result)
 
+})
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
