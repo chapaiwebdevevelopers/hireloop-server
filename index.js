@@ -49,6 +49,13 @@ app.post('/jobs',async(req,res)=>{
 //API for  giving job list without login
 app.get('/jobs', async (req, res) => {
   const query = {};
+  if (req.query.userId) {
+    query.userId = {
+      $regex: `^${req.query.userId}$`,
+      $options: "i"
+    };
+  }
+
 
   if (req.query.jobType) {
     query.jobType = {
@@ -80,6 +87,7 @@ app.get('/jobs', async (req, res) => {
       {responsibilities:{$regex:req.query.search, $options:'i'}}
     ]
   }
+  
   const result = await jobs.find(query).toArray();
 
   console.log("MongoDB Query:", query);
@@ -98,7 +106,11 @@ app.delete("/jobs/:id",async(req,res)=>{
 // update Job data
 app.put("/jobs/:id", async (req, res) => {
   const id = req.params.id;
-  const jobData = req.body;
+  console.log(id)
+  
+  const {_id ,...jobData}=req.body
+  console.log(_id)
+  console.log(jobData)
   const result = await jobs.updateOne(
     { _id: new ObjectId(id) },
     { $set: jobData }
@@ -156,6 +168,19 @@ app.get('/application/count',async(req,res)=>{
   }
 const userAppliedJob = await application.countDocuments(allQueries)
 res.send({count:userAppliedJob})
+})
+
+// update Status of application
+app.patch('/application/:id',async(req,res)=>{
+  const id = req.params.id
+  const query = {_id:new ObjectId(id)}
+  const updatedDoc= {
+    $set:{
+      status:req.body.status
+    }
+  }
+  const result= await application.updateOne(query,updatedDoc)
+  res.send(result)
 })
 
 /**
