@@ -39,7 +39,27 @@ app.get('/users',async (req,res)=>{
     const result = await cursor.toArray();
     res.send(result)
 })
+// get users permium by Id 
+app.get('/users/:id/premium',async(req,res)=>{
+    const id = req.params.id;
+    const query = {_id: new ObjectId(id)}
+    const result = await users.findOne(query,{projection:{premium:1}})
+    res.send(result)
 
+})
+// role update api : Unfinished Api
+app.patch('/users/:id',async(req,res)=>{
+  const id = req.params.id
+  console.log(req.body)
+    const query = {_id:new ObjectId(id)}
+    const role= {
+      $set:{
+        role:req.body.role,
+      }
+    }
+    const result = await users.updateOne(query,role);
+    res.send(result)
+})
 //API for  Creating job 
 app.post('/jobs',async(req,res)=>{
   const job= req.body
@@ -140,6 +160,16 @@ app.get('/jobs/users/:id',async(req,res)=>{
 app.post('/application',async(req,res)=>{
    const apps = req.body
    const result = await application.insertOne(apps)
+   if (apps.jobId) {
+     try {
+       await jobs.updateOne(
+         { _id: new ObjectId(apps.jobId) },
+         { $inc: { applicants: 1 } }
+       )
+     } catch (e) {
+       console.error("Error updating job applicants count:", e)
+     }
+   }
    res.send(result)
 })
 // Show Applied job According to User Id
@@ -150,9 +180,15 @@ app.get('/application',async(req,res)=>{
     //( userId will be match with mongodb property)  (id will be match with parameter from user frontend)
     allQueries.userId = req.query.id   
   }
+  if(req.query.jobId){
+    allQueries.jobId = req.query.jobId
+  }
   // add the job whose by the userId
   if(req.query.userId){
     allQueries.userId=req.query.userId
+  }
+  if(req.query.jobId){
+    allQueries.jobId=req.query.jobId
   }
   const cursor = application.find(allQueries)
    const result = await cursor.toArray();
@@ -166,12 +202,15 @@ app.get('/application/count',async(req,res)=>{
 //allqueries.userId = req.query.id          ( userId will be match with mongodb property)  (id will be match with parameter from user frontend)
     allQueries.userId = req.query.id   
   }
+  if(req.query.jobId){
+    allQueries.jobId = req.query.jobId
+  }
 const userAppliedJob = await application.countDocuments(allQueries)
 res.send({count:userAppliedJob})
 })
 
 // update Status of application
-app.patch('/application/:id',async(req,res)=>{
+app.patch(['/application/:id', '/applications/:id'], async (req, res) => {
   const id = req.params.id
   const query = {_id:new ObjectId(id)}
   const updatedDoc= {
@@ -182,6 +221,8 @@ app.patch('/application/:id',async(req,res)=>{
   const result= await application.updateOne(query,updatedDoc)
   res.send(result)
 })
+
+
 
 /**
  * Payments related api
@@ -230,14 +271,7 @@ app.post('/payments/checkout-verify',async(req,res)=>{
     res.send({success:false, message:'Payment verification failed'})
 })
 
-// get users permium by Id 
-app.get('/users/:id/premium',async(req,res)=>{
-    const id = req.params.id;
-    const query = {_id: new ObjectId(id)}
-    const result = await users.findOne(query,{projection:{premium:1}})
-    res.send(result)
 
-})
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
